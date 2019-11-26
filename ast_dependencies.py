@@ -1,7 +1,10 @@
 dep_graph = {}
+defs = {}
 
 import yaml
+import ast
 import pandas as pd
+from pprint import pprint
 
 with open(r'variables.yml') as file:
     # The FullLoader parameter handles the conversion from YAML
@@ -15,8 +18,6 @@ ops = [
     'disaggregate',
 ]    
 
-import ast
-from pprint import pprint
 
 
 class Analyzer(ast.NodeVisitor):
@@ -65,21 +66,22 @@ class Analyzer(ast.NodeVisitor):
 
    
 # how can I know a ast.Name is a DataFrame column?
-import ast
 for df_name, var_exprs in variables.items():
     for expr in var_exprs:
         #print(expr)
         module = ast.parse(expr)
         stmt = module.body[0]
         lhs, = stmt.targets
+        rhs = stmt.value
         analyzer = Analyzer()
         analyzer.visit(stmt)
-        analyzer.report()
+        #analyzer.report()
         dep_graph[f"{df_name}.{lhs.id}"] = [f"{dep}" if "." in dep 
                                               else f"{df_name}.{dep}" 
                                             for dep in analyzer.deps + 
                                                analyzer.crosswalk.get("deps")
                                            ]
+        defs[f"{df_name}.{lhs.id}"] = expr #rhs
 
         
 # tests
@@ -97,7 +99,8 @@ expected_graph = {'household.nadults': ['household.hhsize', 'household.nchildren
  'household.sqrt_hhsize': ['household.hhsize'],
  'household.nchildren': ['person.is_child', 'person.household_id'],
  'person.is_child': ['person.age'],
- 'person.nadults': ['household.nadults', 'person.household_id'] 
+ 'person.nadults': ['household.nadults', 'person.household_id'],
+ 'person.is_girl': ['person.is_child', 'person.sex']
                  }
 
 compare_dict(dep_graph, expected_graph)

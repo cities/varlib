@@ -7,4 +7,5 @@ household:
 
 person:
     - is_child = age < 18
+    - is_girl = is_child and sex == "F"
     - nadults = person.disaggregate(household.nadults)
