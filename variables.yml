@@ -3,7 +3,8 @@ household:
     - cars_per_adults = cars / nadults
     - cars_per_adults_gt1 = cars_per_adults > 1.0
     - sqrt_hhsize = 1 + sqrt(hhsize)
-    - nchildren = person.groupby(household_id).agg(nchildren={"is_child":sum})
+    - nchildren = household.aggregate(person.is_child)
 
 person:
     - is_child = age < 18
+    - nadults = person.disaggregate(household.nadults)
