@@ -13,13 +13,6 @@ with open(r'variables.yml') as file:
 
     #print(variables)
 
-ops = [
-    'aggregate',
-    'disaggregate',
-]    
-
-
-
 class Analyzer(ast.NodeVisitor):
     def __init__(self):
         self.deps = []
@@ -32,14 +25,19 @@ class Analyzer(ast.NodeVisitor):
         self.generic_visit(rhs)
 
     def visit_Attribute(self, node):
-        dataset = node.value.id
+        print(ast.dump(node))
+        dataset = None
+        if type(node.value) is ast.Name:
+            dataset = node.value.id
+        else:
+            self.visit(node.value)
         if node.attr == "aggregate":
             #self.deps += [f"{node.value.id}.{node.value.id}_id"]
             self.crosswalk["tgt_id"] = f"{dataset}_id"
         elif node.attr == "disaggregate":
             #self.deps += [f"{node.value.id}.{node.value.id}_id"]
             self.crosswalk["src_ds"] = f"{dataset}"
-        else:
+        elif dataset is not None:
             self.deps += [f"{dataset}.{node.attr}"]
             if "tgt_id" in self.crosswalk:
                 self.crosswalk["deps"] += [f"{dataset}.{self.crosswalk['tgt_id']}"]
@@ -99,6 +97,7 @@ expected_graph = {'household.nadults': ['household.hhsize', 'household.nchildren
  'household.sqrt_hhsize': ['household.hhsize'],
  'household.nchildren': ['person.is_child', 'person.household_id'],
  'person.is_child': ['person.age'],
+ 'person.is_child_int': ['person.age'],                  
  'person.nadults': ['household.nadults', 'person.household_id'],
  'person.is_girl': ['person.is_child', 'person.sex']
                  }
