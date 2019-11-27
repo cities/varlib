@@ -1,4 +1,7 @@
-      
+import sys
+sys.path = ["/home/lmwang/py3env/lib/python3.8/site-packages"] + sys.path
+
+from importlib import reload
 import pandas as pd
 import numpy as np
 from pandas.core.computation.expr import Expr
@@ -13,8 +16,7 @@ pp_data = {'person_id': [1, 2, 3, 4],
            'age':[2,   26,  39, 10],
            'sex':['F', 'F', 'M', 'M']}
 # Create DataFrame 
-person = pd.DataFrame(pp_data)
-household = pd.DataFrame(hh_data).set_index("person_id")
+person = pd.DataFrame(pp_data).set_index("person_id")
 person.name = "person"
 
 #person = person.assign(is_child=lambda x: (x["age"]<18).astype(int))
@@ -54,3 +56,16 @@ def compute(full_vname):
 compute("person.is_girl")
 assert 'is_child' in person.columns
 assert 'is_girl' in person.columns
+
+one = 1
+from pandas import to_numeric
+np.ndarray.astype
+
+person.eval("(age)**2")
+person.eval("sqrt(age<18)")
+person.eval("@to_numeric(age<18)")
+
+person.eval("(age).astype('int')", engine="python")
+pd.eval("(person.age).astype('int')")
+
+person.eval("@(age)")
