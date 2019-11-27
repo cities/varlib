@@ -1,0 +1,105 @@
+<html>
+<head>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.css" type="text/css" />
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis-network.min.js"> </script>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+
+<style type="text/css">
+
+        #mynetwork {
+            width: 500px;
+            height: 500px;
+            background-color: #ffffff;
+            border: 1px solid lightgray;
+            position: relative;
+            float: left;
+        }
+
+        
+
+        
+
+        
+</style>
+
+</head>
+
+<body>
+<div id = "mynetwork"></div>
+
+
+<script type="text/javascript">
+
+    // initialize global variables.
+    var edges;
+    var nodes;
+    var network; 
+    var container;
+    var options, data;
+
+    
+    // This method is responsible for drawing the graph, returns the drawn network
+    function drawGraph() {
+        var container = document.getElementById('mynetwork');
+        
+        
+
+        // parsing and collecting nodes and edges from the python
+        nodes = new vis.DataSet([{"id": "household.nadults", "label": "household.nadults", "shape": "dot", "title": "household.nadults"}, {"id": "household.cars_per_adults", "label": "household.cars_per_adults", "shape": "dot", "title": "household.cars_per_adults"}, {"id": "person.nadults", "label": "person.nadults", "shape": "dot", "title": "person.nadults"}, {"id": "household.hhsize", "label": "household.hhsize", "shape": "dot", "title": "household.hhsize"}, {"id": "household.sqrt_hhsize", "label": "household.sqrt_hhsize", "shape": "dot", "title": "household.sqrt_hhsize"}, {"id": "household.nchildren", "label": "household.nchildren", "shape": "dot", "title": "household.nchildren"}, {"id": "household.cars_per_adults_gt1", "label": "household.cars_per_adults_gt1", "shape": "dot", "title": "household.cars_per_adults_gt1"}, {"id": "household.cars", "label": "household.cars", "shape": "dot", "title": "household.cars"}, {"id": "person.is_child", "label": "person.is_child", "shape": "dot", "title": "person.is_child"}, {"id": "person.is_girl", "label": "person.is_girl", "shape": "dot", "title": "person.is_girl"}, {"id": "person.household_id", "label": "person.household_id", "shape": "dot", "title": "person.household_id"}, {"id": "person.age", "label": "person.age", "shape": "dot", "title": "person.age"}, {"id": "person.sex", "label": "person.sex", "shape": "dot", "title": "person.sex"}]);
+        edges = new vis.DataSet([{"from": "household.nadults", "to": "household.cars_per_adults"}, {"from": "household.nadults", "to": "person.nadults"}, {"from": "household.hhsize", "to": "household.nadults"}, {"from": "household.hhsize", "to": "household.sqrt_hhsize"}, {"from": "household.nchildren", "to": "household.nadults"}, {"from": "household.cars_per_adults", "to": "household.cars_per_adults_gt1"}, {"from": "household.cars", "to": "household.cars_per_adults"}, {"from": "person.is_child", "to": "household.nchildren"}, {"from": "person.is_child", "to": "person.is_girl"}, {"from": "person.household_id", "to": "household.nchildren"}, {"from": "person.household_id", "to": "person.nadults"}, {"from": "person.age", "to": "person.is_child"}, {"from": "person.sex", "to": "person.is_girl"}]);
+
+        // adding nodes and edges to the graph
+        data = {nodes: nodes, edges: edges};
+
+        var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": false,
+            "type": "continuous"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+        
+        
+
+        
+
+        network = new vis.Network(container, data, options);
+
+        
+
+
+        
+
+        return network;
+
+    }
+
+    drawGraph();
+
+</script>
+</body>
+</html>
