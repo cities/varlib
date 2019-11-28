@@ -12,49 +12,55 @@ _methods = [
 class DepAnalyzer(ast.NodeVisitor):
     def __init__(self):
         self.deps = []
-        self.crosswalk = {"deps":[]}
         self.funcs = []
-        self.is_method = None
+        self.crosswalk = {}
+        self.is_method = {}
 
     def visit_Assign(self, node):
         lhs, = node.targets
         rhs = node.value
+        print(ast.dump(rhs))
         self.visit(rhs)
 
     def visit_Attribute(self, node):
-        print(ast.dump(node))
+        #print(ast.dump(node))
         dataset = None
-        #import ipdb; ipdb.set_trace()
         #maybe a dataset name
         if type(node.value) is ast.Name:
-            # node is an attribute, not a method
-            if node.attr not in _methods:
+            # node is an attribute
+            if not self.is_method.get(node, False):
+            #if node.attr not in _methods:
                 dataset = node.value.id
-            else:
+                self.deps += [f"{dataset}.{node.attr}"]
+            elif node.attr not in ['aggregate', 'disaggregate']:
+                # aggregate and disaggregate is method, but
+                # no need to add dependency here
                 self.deps +=[node.value.id]
         else:
             self.visit(node.value)
         if node.attr == "aggregate":
+            dataset = node.value.id
             #self.deps += [f"{node.value.id}.{node.value.id}_id"]
             self.crosswalk["tgt_ds"] = f"{dataset}"
         elif node.attr == "disaggregate":
+            dataset = node.value.id
             #self.deps += [f"{node.value.id}.{node.value.id}_id"]
             self.crosswalk["src_ds"] = f"{dataset}"
-        elif dataset is not None:
-            self.deps += [f"{dataset}.{node.attr}"]
+        elif self.crosswalk:
             if "tgt_ds" in self.crosswalk:
-                self.crosswalk["deps"] += [f"{dataset}.{self.crosswalk['tgt_ds']}_id"]
+                self.deps += [f"{dataset}.{self.crosswalk['tgt_ds']}_id"]
             elif "src_ds" in self.crosswalk:
-                self.crosswalk["deps"] += [f"{self.crosswalk['src_ds']}.{dataset}_id"]
+                self.deps += [f"{self.crosswalk['src_ds']}.{dataset}_id"]
+
 
     def visit_Call(self, node):
         #print(ast.dump(node))
         #if type(node.func) is ast.Name:
         #    self.generic_visit(node.args)
-        if type(node.func) is ast.Attribute:
-            self.is_method = True
+        #if type(node.func) is ast.Attribute:
         #    self.deps += [f"{node.func.value.id}.{node.func.value.id}_id"]
         if type(node.func) is ast.Attribute:
+            self.is_method = {node.func: True}
             self.visit(node.func)
         else:
             self.funcs += [node.func]
@@ -95,8 +101,7 @@ def build_graph(vardef_yml, verbose=False):
             #analyzer.report()
             dep_dict[f"{df_name}.{lhs.id}"] = [[f"{dep}" if "." in dep
                                                   else f"{df_name}.{dep}"
-                                                for dep in analyzer.deps +
-                                                  analyzer.crosswalk.get("deps")
+                                                for dep in analyzer.deps
                                                 ],
                                                expr, # original var definition
                                                None] # hash placeholder
