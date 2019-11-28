@@ -2,12 +2,11 @@
 
 import click
 
-import varlib
+from varlib.parse import build_graph
 
 
 @click.command('varlib')
-@click.argument('count', type=int, metavar='N')
-def cli(count):
-    """Echo a value `N` number of times"""
-    for i in range(count):
-        click.echo(varlib.has_legs)
+@click.argument('vardef_yml', type=str, metavar='N')
+def cli(vardef_yml):
+    """build and print dependency graph"""
+    build_graph(vardef_yml, verbose=True)

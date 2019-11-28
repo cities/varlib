@@ -1,4 +1,5 @@
-import varlib
+from varlib.parse import build_graph, compute
+import pandas as pd
 
 # tests
 def compare_dict(dict1, dict2, verbose=True):
@@ -24,6 +25,20 @@ def test_parse_deps():
         'person.is_girl': ['person.is_child', 'person.sex']
         }
 
-    resulted_dict, _ = varlib.analyze_dependency("example/variables.yml")
+    _, resulted_dict, _ = build_graph("example/variables.yml")
     compare_dict(expected_dict, resulted_dict, verbose=False)
 
+def test_compute():
+    def_dict, _, dep_graph = build_graph("example/variables.yml")
+
+    pp_data = {'person_id': [1, 2, 3, 4],
+            'household_id': [1, 1, 2, 2],
+            'age':[2,   26,  39, 10],
+            'sex':['F', 'F', 'M', 'M']}
+    # Create DataFrame
+    person = pd.DataFrame(pp_data).set_index("person_id")
+    person.name = "person"
+
+    compute("person.is_girl", dep_graph, def_dict, resolvers={"person":person})
+    assert 'is_girl' in person.columns
+    assert 'is_child' in person.columns

@@ -1,5 +1,7 @@
 import yaml
 import ast
+import itertools
+import networkx as nx
 import pandas as pd
 from pprint import pprint
 
@@ -15,7 +17,7 @@ class DepAnalyzer(ast.NodeVisitor):
         self.generic_visit(rhs)
 
     def visit_Attribute(self, node):
-        print(ast.dump(node))
+        #print(ast.dump(node))
         dataset = None
         if type(node.value) is ast.Name:
             dataset = node.value.id
@@ -52,7 +54,7 @@ class DepAnalyzer(ast.NodeVisitor):
     def report(self):
         pprint(self.deps)
 
-def analyze_dependency(vardef_yml):
+def build_graph(vardef_yml, verbose=False):
     dep_dict = {}
     def_dict = {}
 
@@ -77,9 +79,31 @@ def analyze_dependency(vardef_yml):
             dep_dict[f"{df_name}.{lhs.id}"] = [f"{dep}" if "." in dep
                                                   else f"{df_name}.{dep}"
                                                 for dep in analyzer.deps +
-                                                   analyzer.crosswalk.get("deps")
+                                                  analyzer.crosswalk.get("deps")
                                                ]
             def_dict[f"{df_name}.{lhs.id}"] = expr #rhs
-    return dep_dict, def_dict
 
+    dep_graph = nx.DiGraph()
+    for k, v in dep_dict.items():
+        dep_graph.add_node(k)
+        dep_graph.add_nodes_from(v)
+        edges = itertools.zip_longest(v, [k], fillvalue=k)
+        dep_graph.add_edges_from(edges)
+
+    if verbose:
+        pprint(dep_dict)
+
+    return def_dict, dep_dict, dep_graph
+
+def compute(full_vname, dep_graph, def_dict, resolvers):
+    assert dep_graph.has_node(full_vname)
+    df_name, vname= full_vname.split(".")
+    df = resolvers[df_name]
+    for dep_full_vname in dep_graph.predecessors(full_vname):
+        dep_df_name, dep_vname = dep_full_vname.split(".")
+        if dep_vname not in resolvers[dep_df_name].columns:
+            compute(dep_full_vname, dep_graph, def_dict, resolvers)
+    var_def = def_dict[full_vname]
+    #var_def = f"{vname} = {var_def}"
+    df.eval(var_def, inplace=True)
 
