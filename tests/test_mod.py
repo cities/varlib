@@ -25,11 +25,13 @@ def test_parse_deps():
         'person.is_girl': ['person.is_child', 'person.sex']
         }
 
-    _, resulted_dict, _ = build_graph("example/variables.yml")
+    dep_graph = build_graph("example/variables.yml")
+    resulted_dict = dict([(v, list(dep_graph.predecessors(v)))
+                        for v in expected_dict.keys()])
     compare_dict(expected_dict, resulted_dict, verbose=False)
 
 def test_compute():
-    def_dict, _, dep_graph = build_graph("example/variables.yml")
+    dep_graph = build_graph("example/variables.yml")
 
     pp_data = {'person_id': [1, 2, 3, 4],
             'household_id': [1, 1, 2, 2],
@@ -39,6 +41,6 @@ def test_compute():
     person = pd.DataFrame(pp_data).set_index("person_id")
     person.name = "person"
 
-    compute("person.is_girl", dep_graph, def_dict, resolvers={"person":person})
+    compute("person.is_girl", dep_graph, resolvers={"person":person})
     assert 'is_girl' in person.columns
     assert 'is_child' in person.columns
