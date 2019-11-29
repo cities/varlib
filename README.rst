@@ -4,8 +4,9 @@ varlib
 .. image:: https://travis-ci.org/cities/varlib.svg
    :target: https://travis-ci.org/cities/varlib
 
-.. image:: https://coveralls.io/repos/cities/varlib/badge.png
-   :target: https://coveralls.io/r/cities/varlib
+
+.. image:: https://coveralls.io/repos/github/cities/varlib/badge.svg?branch=master
+   :target: https://coveralls.io/github/cities/varlib?branch=master
 
 A variable library Python package with CLI and test suite included with the following features:
 - succinct variable definitions in yaml format
