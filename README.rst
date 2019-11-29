@@ -9,6 +9,7 @@ varlib
    :target: https://coveralls.io/github/cities/varlib?branch=master
 
 A variable library Python package with CLI and test suite included with the following features:
+
 - succinct variable definitions in yaml format
 - automatic detectation of variable dependencies and build a dependency graph
 - automatic dependency checking and computing when needed
