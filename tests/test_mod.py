@@ -75,7 +75,7 @@ def test_compute_simple_vars():
     assert np.allclose(person['log1p_age'].values,
                        np.array([1.09861229, 3.29583687, 3.68887945, 2.39789527]))
 
-def test_compute_recompute():
+def test_compute_lazy_recompute():
     resolvers = prep_resolvers()
     person = resolvers["person"]
     compute("person.log1p_age", dep_graph, resolvers=resolvers)

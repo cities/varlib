@@ -1,4 +1,5 @@
 import logging
+import xxhash
 import time
 
 def log_function_entry_and_exit(decorated_function):
@@ -22,16 +23,18 @@ def log_function_entry_and_exit(decorated_function):
             kwargs=dec_fn_kwargs)
 
         vname = params['args']["full_vname"]
+        level = params['kwargs'].get('level', 0)
         if type(vname) is not list:
-            log.info('Computing {} started ...'.format(vname))
-            start_time = time.time()
+            indent = ' ' * 4 * level
+            log.info(f'{indent}Computing {vname} started ...')
+            t0 = time.time()
             #log.debug(
             #    "\t" + ', '.join([
             #        '{}={}'.format(str(k), repr(v)) for k, v in params.items()]))
             # Execute wrapped (decorated) function:
             out = decorated_function(*dec_fn_args, **dec_fn_kwargs)
-            log.info('Computing {} done in {:.2}s.'.format(vname,
-                                                           time.time() - start_time))
+            time_lapsed = time.time() - t0
+            log.info(f'{indent}Computing {vname} done in {time_lapsed:.2f}s.')
         else:
             out = decorated_function(*dec_fn_args, **dec_fn_kwargs)
 
@@ -39,22 +42,42 @@ def log_function_entry_and_exit(decorated_function):
     return wrapper
 
 @log_function_entry_and_exit
-def compute(full_vname, dep_graph, resolvers, recompute=False):
+def compute(full_vname, dep_graph, resolvers, recompute=False, level=0):
     if type(full_vname) is list:
-        [compute(a_vname, dep_graph, resolvers, recompute=recompute)
+        [compute(a_vname, dep_graph, resolvers, recompute=recompute, level=0)
                  for a_vname in full_vname]
         return
 
     assert dep_graph.has_node(full_vname), f"{full_vname} not in dep_graph"
     df_name, vname= full_vname.split(".")
     df = resolvers[df_name]
+    deps_up_to_date = {}
+    xxh64_hash = xxhash.xxh64()
     for dep_full_vname in dep_graph.predecessors(full_vname):
         dep_df_name, dep_vname = dep_full_vname.split(".")
         if dep_vname not in resolvers[dep_df_name].columns:
-            compute(dep_full_vname, dep_graph, resolvers)
-    var_def = dep_graph.nodes[full_vname]['expr']
-    #var_def = f"{vname} = {var_def}"
-    df.eval(var_def, inplace=True)
+            compute(dep_full_vname, dep_graph, resolvers, level=level+1)
+        xxh64_hash.update(df[dep_vname].values)
+        current_hash = xxh64_hash.intdigest()
+        xxh64_hash.reset()
+        dep_hash = dep_graph.nodes[dep_full_vname].get("hash", "")
+        if dep_hash != current_hash:
+            deps_up_to_date[dep_full_vname] = False
+            dep_graph.nodes[dep_full_vname]["hash"] = current_hash
+        else:
+            deps_up_to_date[dep_full_vname] = True
+
+    vname_exists = vname in df.columns
+    if not vname_exists or not all(list(deps_up_to_date.values())) or recompute:
+        var_def = dep_graph.nodes[full_vname]['expr']
+        #var_def = f"{vname} = {var_def}"
+        df.eval(var_def, inplace=True)
+    else:
+        indent = ' ' * 4 * (level + 1)
+        log = logging.getLogger('compute')
+        log.info(f'{indent}Computing {vname} skipped')
+
+    return
 
 #import sys
 #sys.path = ["/home/lmwang/py3env/lib/python3.8/site-packages"] + sys.path
