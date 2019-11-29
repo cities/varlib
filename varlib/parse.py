@@ -19,7 +19,7 @@ class DepAnalyzer(ast.NodeVisitor):
     def visit_Assign(self, node):
         lhs, = node.targets
         rhs = node.value
-        print(ast.dump(rhs))
+        #print(ast.dump(rhs))
         self.visit(rhs)
 
     def visit_Attribute(self, node):
@@ -68,7 +68,7 @@ class DepAnalyzer(ast.NodeVisitor):
         [self.visit(kwarg) for kwarg in node.keywords]
 
     def visit_Name(self, node):
-        print(ast.dump(node))
+        #print(ast.dump(node))
         if hasattr(node, "attr"):
             self.deps += [f"{node.id}.{node.attr}"]
         else:
@@ -125,15 +125,4 @@ def build_graph(vardef_yml, verbose=False):
     #return def_dict, dep_dict, dep_graph
     return dep_graph
 
-def compute(full_vname, dep_graph, resolvers, recompute=False):
-    assert dep_graph.has_node(full_vname)
-    df_name, vname= full_vname.split(".")
-    df = resolvers[df_name]
-    for dep_full_vname in dep_graph.predecessors(full_vname):
-        dep_df_name, dep_vname = dep_full_vname.split(".")
-        if dep_vname not in resolvers[dep_df_name].columns:
-            compute(dep_full_vname, dep_graph, resolvers)
-    var_def = dep_graph.nodes[full_vname]['expr']
-    #var_def = f"{vname} = {var_def}"
-    df.eval(var_def, inplace=True)
 

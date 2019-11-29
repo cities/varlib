@@ -5,7 +5,6 @@ household:
     - cars_per_adults = cars / nadults
     - cars_per_adults_gt1 = cars_per_adults > 1.0
     - sqrt_hhsize = 1 + sqrt(hhsize)
-    - log_hhsize = log(hhsize)
     - exp_hhsize = exp(hhsize)
 
 person:
@@ -13,6 +12,7 @@ person:
     - is_child_int = (age < 18).astype('int')
     - is_child_int2 = (is_child).astype('int')
     - is_girl = is_child and sex == 'F'
+    - log1p_age = log(age+1)
     - hh_nadults = person.disaggregate(household.nadults)
 
 zone:

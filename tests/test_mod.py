@@ -1,4 +1,5 @@
-from varlib.parse import build_graph, compute
+from varlib.parse import build_graph
+from varlib.compute import compute
 import pandas as pd
 import numpy as np
 
@@ -21,8 +22,8 @@ def test_parse_deps():
         'household.cars_per_adults': ['household.cars', 'household.nadults'],
         'household.cars_per_adults_gt1': ['household.cars_per_adults'],
         'household.sqrt_hhsize': ['household.hhsize'],
-        'household.log_hhsize': ['household.hhsize'],
         'household.nchildren': ['person.is_child', 'person.household_id'],
+        'person.log1p_age': ['person.age'],
         'person.is_child': ['person.age'],
         'person.is_child_int': ['person.age'],
         'person.hh_nadults': ['household.nadults', 'person.household_id'],
@@ -34,7 +35,6 @@ def test_parse_deps():
     resulted_dict = dict([(v, list(dep_graph.predecessors(v)))
                             for v in expected_dict.keys()])
     compare_dict(resulted_dict, expected_dict, verbose=True)
-
 
 def prep_resolvers():
     # Create DataFrame
@@ -60,7 +60,7 @@ def prep_resolvers():
     return resolvers
 
 dep_graph = build_graph("example/variables.yml")
-def test_compute_simple():
+def test_compute_simple_vars():
     resolvers = prep_resolvers()
     person = resolvers["person"]
     compute("person.is_girl", dep_graph, resolvers=resolvers)
@@ -70,12 +70,25 @@ def test_compute_simple():
     assert 'is_child' in person.columns
     assert np.all(person['is_child'].values ==
                   np.array([True, False, False, True]))
-    #compute("household.log_hhsize", dep_graph, resolvers=resolvers)
-    #assert 'log_hhsize' in household.columns
-    #assert np.all(household['log_hhsize'].values ==
-    #              np.array([True, False, False, True]))
+    compute("person.log1p_age", dep_graph, resolvers=resolvers)
+    assert 'log1p_age' in person.columns
+    assert np.allclose(person['log1p_age'].values,
+                       np.array([1.09861229, 3.29583687, 3.68887945, 2.39789527]))
 
-def DISABLED_test_compute_conversion():
+def test_compute_recompute():
+    resolvers = prep_resolvers()
+    person = resolvers["person"]
+    compute("person.log1p_age", dep_graph, resolvers=resolvers)
+    assert 'log1p_age' in person.columns
+    col1 = person['log1p_age']
+    print(id(col1))
+    compute("person.log1p_age", dep_graph, resolvers=resolvers)
+    id(person['log1p_age']) == id(col1)
+    person['age'] += 1
+    compute("person.log1p_age", dep_graph, resolvers=resolvers)
+    id(person['log1p_age']) != id(col1)
+
+def DISABLED_test_compute_type_conversion():
     resolvers = prep_resolvers()
     compute("person.is_child_int", dep_graph, resolvers=resolvers)
     compute("person.is_child_int2", dep_graph, resolvers=resolvers)
