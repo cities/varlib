@@ -8,20 +8,25 @@ with codecs_open('README.rst', encoding='utf-8') as f:
 
 
 setup(name='varlib',
-      version='0.0.1',
-      description=u"Skeleton of a Python package",
+      version='0.2.0',
+      description=u"Variable Library",
       long_description=long_description,
       classifiers=[],
       keywords='',
-      author=u"Sean Gillies",
-      author_email='sean@mapbox.com',
-      url='https://github.com/mapbox/varlib',
+      author=u"Liming Wang",
+      author_email='',
+      url='https://github.com/cities/varlib',
       license='MIT',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
       include_package_data=True,
       zip_safe=False,
       install_requires=[
-          'click'
+          'click',
+          'networkx',
+          'numpy',
+          'pandas',
+          'pyyaml',
+          'xxhash',
       ],
       extras_require={
           'test': ['pytest'],
