@@ -1,0 +1,105 @@
+<html>
+<head>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis.css" type="text/css" />
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.1/vis-network.min.js"> </script>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+
+<style type="text/css">
+
+        #mynetwork {
+            width: 500px;
+            height: 500px;
+            background-color: #ffffff;
+            border: 1px solid lightgray;
+            position: relative;
+            float: left;
+        }
+
+        
+
+        
+
+        
+</style>
+
+</head>
+
+<body>
+<div id = "mynetwork"></div>
+
+
+<script type="text/javascript">
+
+    // initialize global variables.
+    var edges;
+    var nodes;
+    var network; 
+    var container;
+    var options, data;
+
+    
+    // This method is responsible for drawing the graph, returns the drawn network
+    function drawGraph() {
+        var container = document.getElementById('mynetwork');
+        
+        
+
+        // parsing and collecting nodes and edges from the python
+        nodes = new vis.DataSet([{"id": "household.hhsize", "label": "household.hhsize", "shape": "dot", "title": "household.hhsize"}, {"id": "household.nadults", "label": "household.nadults", "shape": "dot", "title": "household.nadults"}, {"id": "household.sqrt_hhsize", "label": "household.sqrt_hhsize", "shape": "dot", "title": "household.sqrt_hhsize"}, {"id": "household.exp_hhsize", "label": "household.exp_hhsize", "shape": "dot", "title": "household.exp_hhsize"}, {"id": "person.person_id", "label": "person.person_id", "shape": "dot", "title": "person.person_id"}, {"id": "person.household_id", "label": "person.household_id", "shape": "dot", "title": "person.household_id"}, {"id": "household.nchildren", "label": "household.nchildren", "shape": "dot", "title": "household.nchildren"}, {"id": "person.hh_nadults", "label": "person.hh_nadults", "shape": "dot", "title": "person.hh_nadults"}, {"id": "person.is_child", "label": "person.is_child", "shape": "dot", "title": "person.is_child"}, {"id": "person.is_child_int2", "label": "person.is_child_int2", "shape": "dot", "title": "person.is_child_int2"}, {"id": "person.is_girl", "label": "person.is_girl", "shape": "dot", "title": "person.is_girl"}, {"id": "household.cars_per_adults", "label": "household.cars_per_adults", "shape": "dot", "title": "household.cars_per_adults"}, {"id": "zone.nadults", "label": "zone.nadults", "shape": "dot", "title": "zone.nadults"}, {"id": "household.cars_per_adults_gt1", "label": "household.cars_per_adults_gt1", "shape": "dot", "title": "household.cars_per_adults_gt1"}, {"id": "household.cars", "label": "household.cars", "shape": "dot", "title": "household.cars"}, {"id": "person.age", "label": "person.age", "shape": "dot", "title": "person.age"}, {"id": "person.is_child_int", "label": "person.is_child_int", "shape": "dot", "title": "person.is_child_int"}, {"id": "person.log1p_age", "label": "person.log1p_age", "shape": "dot", "title": "person.log1p_age"}, {"id": "person.sex", "label": "person.sex", "shape": "dot", "title": "person.sex"}, {"id": "household.zone_id", "label": "household.zone_id", "shape": "dot", "title": "household.zone_id"}]);
+        edges = new vis.DataSet([{"from": "household.hhsize", "to": "household.nadults"}, {"from": "household.hhsize", "to": "household.sqrt_hhsize"}, {"from": "household.hhsize", "to": "household.exp_hhsize"}, {"from": "person.person_id", "to": "household.hhsize"}, {"from": "person.household_id", "to": "household.hhsize"}, {"from": "person.household_id", "to": "household.nchildren"}, {"from": "person.household_id", "to": "person.hh_nadults"}, {"from": "household.nchildren", "to": "household.nadults"}, {"from": "person.is_child", "to": "household.nchildren"}, {"from": "person.is_child", "to": "person.is_child_int2"}, {"from": "person.is_child", "to": "person.is_girl"}, {"from": "household.nadults", "to": "household.cars_per_adults"}, {"from": "household.nadults", "to": "person.hh_nadults"}, {"from": "household.nadults", "to": "zone.nadults"}, {"from": "household.cars_per_adults", "to": "household.cars_per_adults_gt1"}, {"from": "household.cars", "to": "household.cars_per_adults"}, {"from": "person.age", "to": "person.is_child"}, {"from": "person.age", "to": "person.is_child_int"}, {"from": "person.age", "to": "person.log1p_age"}, {"from": "person.sex", "to": "person.is_girl"}, {"from": "household.zone_id", "to": "zone.nadults"}]);
+
+        // adding nodes and edges to the graph
+        data = {nodes: nodes, edges: edges};
+
+        var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": false,
+            "type": "continuous"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+        
+        
+
+        
+
+        network = new vis.Network(container, data, options);
+
+        
+
+
+        
+
+        return network;
+
+    }
+
+    drawGraph();
+
+</script>
+</body>
+</html>
