@@ -1,9 +1,9 @@
 # TODO
 - [x] parse variable definitions to find dependency graph for variables
 - [x] recursively compute its dependencies before a variable is evalualted (computed)
-- [ ] refactor varlib into a python package
-- [ ] automate tests
-- [ ] handle version of dependencies, only re-compute when a variable is stale
+- [x] refactor varlib into a python package
+- [x] automate tests
+- [x] handle version of dependencies, only re-compute when a variable is stale
    - insert hash digest as 'version' attr in the dep graph for a variable is computed
    - insert hash digest of dependencies variables into the dependency graph at computing if a column of the name of the variable exists and its version attr in dep graph is not set
    - re-compute a variable only when 'version' attr for predecessors is not set or differ from current value of hash digest
