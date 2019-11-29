@@ -4,8 +4,8 @@ import time
 def log_function_entry_and_exit(decorated_function):
     """
     Function decorator logging entry + exit and parameters of functions.
-
     Entry and exit as logging.info, parameters as logging.DEBUG.
+    https://stackoverflow.com/a/39643469/688693
     """
     from functools import wraps
 
@@ -23,7 +23,7 @@ def log_function_entry_and_exit(decorated_function):
 
         vname = params['args']["full_vname"]
         if type(vname) is not list:
-            log.info('Computing {} ...'.format(vname))
+            log.info('Computing {} started ...'.format(vname))
             start_time = time.time()
             #log.debug(
             #    "\t" + ', '.join([

@@ -81,12 +81,14 @@ def test_compute_recompute():
     compute("person.log1p_age", dep_graph, resolvers=resolvers)
     assert 'log1p_age' in person.columns
     col1 = person['log1p_age']
-    print(id(col1))
     compute("person.log1p_age", dep_graph, resolvers=resolvers)
-    id(person['log1p_age']) == id(col1)
+    assert id(person['log1p_age']) == id(col1), "lazy recompute not enabled"
+    compute("person.log1p_age", dep_graph, resolvers=resolvers, recompute=True)
+    assert id(person['log1p_age']) != id(col1), "force recompute failed"
+    col2 = person['log1p_age']
     person['age'] += 1
     compute("person.log1p_age", dep_graph, resolvers=resolvers)
-    id(person['log1p_age']) != id(col1)
+    assert id(person['log1p_age']) != id(col2), "failed to recompute when deps change"
 
 def DISABLED_test_compute_type_conversion():
     resolvers = prep_resolvers()
