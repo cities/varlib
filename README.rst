@@ -15,8 +15,6 @@ A variable library Python package with CLI and test suite included with the foll
    
 **Work-in-progress** some features may not be working yet.
 
-.. image:: https://farm4.staticflickr.com/3951/15672691531_3037819613_o_d.png
-
 Installation
 -------------
 
