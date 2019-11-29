@@ -51,24 +51,22 @@ def compute(full_vname, dep_graph, resolvers, recompute=False, level=0):
     assert dep_graph.has_node(full_vname), f"{full_vname} not in dep_graph"
     df_name, vname= full_vname.split(".")
     df = resolvers[df_name]
-    deps_up_to_date = {}
+    deps_up_to_date = True
     xxh64_hash = xxhash.xxh64()
     for dep_full_vname in dep_graph.predecessors(full_vname):
         dep_df_name, dep_vname = dep_full_vname.split(".")
         if dep_vname not in resolvers[dep_df_name].columns:
             compute(dep_full_vname, dep_graph, resolvers, level=level+1)
-        xxh64_hash.update(df[dep_vname].values)
+        xxh64_hash.update(resolvers[dep_df_name][dep_vname].values)
         current_hash = xxh64_hash.intdigest()
         xxh64_hash.reset()
         dep_hash = dep_graph.nodes[dep_full_vname].get("hash", "")
         if dep_hash != current_hash:
-            deps_up_to_date[dep_full_vname] = False
+            deps_up_to_date = False
             dep_graph.nodes[dep_full_vname]["hash"] = current_hash
-        else:
-            deps_up_to_date[dep_full_vname] = True
 
     vname_exists = vname in df.columns
-    if not vname_exists or not all(list(deps_up_to_date.values())) or recompute:
+    if not vname_exists or not deps_up_to_date or recompute:
         var_def = dep_graph.nodes[full_vname]['expr']
         #var_def = f"{vname} = {var_def}"
         df.eval(var_def, inplace=True)
