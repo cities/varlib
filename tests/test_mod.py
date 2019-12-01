@@ -78,17 +78,17 @@ def test_compute_simple_vars():
 def test_compute_lazy_recompute():
     resolvers = prep_resolvers()
     person = resolvers["person"]
-    compute("person.log1p_age", dep_graph, resolvers=resolvers)
-    assert 'log1p_age' in person.columns
-    col1 = person['log1p_age']
-    compute("person.log1p_age", dep_graph, resolvers=resolvers)
-    assert id(person['log1p_age']) == id(col1), "lazy recompute not enabled"
-    compute("person.log1p_age", dep_graph, resolvers=resolvers, recompute=True)
-    assert id(person['log1p_age']) != id(col1), "force recompute failed"
-    col2 = person['log1p_age']
-    person['age'] += 1
-    compute("person.log1p_age", dep_graph, resolvers=resolvers)
-    assert id(person['log1p_age']) != id(col2), "failed to recompute when deps change"
+    compute("person.is_girl", dep_graph, resolvers=resolvers)
+    assert 'is_girl' in person.columns
+    col1 = person['is_girl']
+    compute("person.is_girl", dep_graph, resolvers=resolvers)
+    assert id(person['is_girl']) == id(col1), "lazy recompute not enabled"
+    compute("person.is_girl", dep_graph, resolvers=resolvers, recompute=True)
+    assert id(person['is_girl']) != id(col1), "force recompute failed"
+    col2 = person['is_girl']
+    person['age'] += 10
+    compute("person.is_girl", dep_graph, resolvers=resolvers)
+    assert id(person['is_girl']) != id(col2), "failed to recompute when deps change"
 
 def DISABLED_test_compute_type_conversion():
     resolvers = prep_resolvers()

@@ -2,6 +2,8 @@ import logging
 import xxhash
 import time
 
+logging_indent_spaces_per_level = 2 * ' '
+
 def log_function_entry_and_exit(decorated_function):
     """
     Function decorator logging entry + exit and parameters of functions.
@@ -25,7 +27,7 @@ def log_function_entry_and_exit(decorated_function):
         vname = params['args']["full_vname"]
         level = params['kwargs'].get('level', 0)
         if type(vname) is not list:
-            indent = ' ' * 4 * level
+            indent = logging_indent_spaces_per_level * level
             log.info(f'{indent}Computing {vname} started ...')
             t0 = time.time()
             #log.debug(
@@ -55,8 +57,8 @@ def compute(full_vname, dep_graph, resolvers, recompute=False, level=0):
     xxh64_hash = xxhash.xxh64()
     for dep_full_vname in dep_graph.predecessors(full_vname):
         dep_df_name, dep_vname = dep_full_vname.split(".")
-        if dep_vname not in resolvers[dep_df_name].columns:
-            compute(dep_full_vname, dep_graph, resolvers, level=level+1)
+        #if dep_vname not in resolvers[dep_df_name].columns:
+        compute(dep_full_vname, dep_graph, resolvers, level=level+1)
         xxh64_hash.update(resolvers[dep_df_name][dep_vname].values)
         current_hash = xxh64_hash.intdigest()
         xxh64_hash.reset()
@@ -66,14 +68,18 @@ def compute(full_vname, dep_graph, resolvers, recompute=False, level=0):
             dep_graph.nodes[dep_full_vname]["hash"] = current_hash
 
     vname_exists = vname in df.columns
+    log = logging.getLogger('compute')
+    indent = logging_indent_spaces_per_level * (level + 1)
     if not vname_exists or not deps_up_to_date or recompute:
         var_def = dep_graph.nodes[full_vname]['expr']
         #var_def = f"{vname} = {var_def}"
         df.eval(var_def, inplace=True)
+        reason = 'new variable' * (not vname_exists) or \
+                 'forced recomputing' * recompute or \
+                 'dependency updated' * (not deps_up_to_date)
+        log.info(f'{indent}Computing {full_vname} ({reason})')
     else:
-        indent = ' ' * 4 * (level + 1)
-        log = logging.getLogger('compute')
-        log.info(f'{indent}Computing {vname} skipped')
+        log.info(f'{indent}Computing {full_vname} skipped')
 
     return
 
