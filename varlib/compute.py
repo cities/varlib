@@ -47,7 +47,8 @@ def log_function_entry_and_exit(decorated_function):
 def compute(full_vname, dep_graph, resolvers, recompute=False, level=0,
             *args, **kwargs):
     if type(full_vname) is list:
-        [compute(a_vname, dep_graph, resolvers, recompute=recompute, level=0)
+        [compute(a_vname, dep_graph, resolvers, *args,
+                 recompute=recompute, level=0, **kwargs)
                  for a_vname in full_vname]
         return
 
@@ -73,9 +74,10 @@ def compute(full_vname, dep_graph, resolvers, recompute=False, level=0,
     log = logging.getLogger('compute')
     indent = logging_indent_spaces_per_level * (level + 1)
     if not vname_exists or not deps_up_to_date or recompute:
-        var_def = dep_graph.nodes[full_vname]['expr'][0]
+        for expr in dep_graph.nodes[full_vname]['exprs']:
+            var_def = expr
         #var_def = f"{vname} = {var_def}"
-        df.eval(var_def, *args, inplace=True, **kwargs)
+            df.eval(var_def, *args, inplace=True, **kwargs)
         reason = 'new variable' * (not vname_exists) or \
                  'forced recomputing' * recompute or \
                  'dependency updated' * (not deps_up_to_date)

@@ -137,23 +137,21 @@ def build_graph(vardef_yml, verbose=False):
             analyzer.visit(stmt)
             #analyzer.report()
             transformer = ExprTransformer()
-            expr_txfm = transformer.visit(stmt)
-            exprs = transformer.exprs + [astor.to_source(expr_txfm)]
-            dep_dict[f"{df_name}.{lhs.id}"] = [[f"{dep}" if "." in dep
-                                                  else f"{df_name}.{dep}"
-                                                for dep in analyzer.deps
-                                                ],
-                                               exprs, # original var definition
-                                               None] # hash placeholder
+            stmts = transformer.transform_stmt(stmt)
+            deps = [f"{dep}" if "." in dep else f"{df_name}.{dep}"
+                                for dep in analyzer.deps]
+            dep_dict[f"{df_name}.{lhs.id}"] = [deps,
+                                               stmts, # original var definition
+                                               None]  # hash placeholder
             #def_dict[f"{df_name}.{lhs.id}"] = expr #rhs
 
     dep_graph = nx.DiGraph()
     for k, v in dep_dict.items():
         k_dep, k_expr, k_hash = v
         if not dep_graph.has_node(k):
-            dep_graph.add_node(k, expr=k_expr, hash=k_hash)
+            dep_graph.add_node(k, exprs=k_expr, hash=k_hash)
         else:
-            dep_graph.nodes[k]['expr'] = k_expr
+            dep_graph.nodes[k]['exprs'] = k_expr
             dep_graph.nodes[k]['hash'] = k_hash
         dep_graph.add_nodes_from(k_dep)
         edges = itertools.zip_longest(k_dep, [k], fillvalue=k)
