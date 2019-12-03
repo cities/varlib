@@ -4,10 +4,44 @@ import itertools
 import networkx as nx
 import pandas as pd
 from pprint import pprint
+import xxhash
+import astor
 
-_methods = [
-    'astype'
-]
+class ExprTransformer(ast.NodeTransformer):
+    def __init__(self):
+        self.is_method = {}
+        self.exprs = []
+        self.hash_gen = xxhash.xxh64()
+
+    def transform_stmt(self, stmt):
+        stmt_txfm = self.visit(stmt)
+        stmt_retn = self.exprs + [astor.to_source(stmt_txfm)]
+        return stmt_retn
+
+    def visit_Call(self, node):
+        if type(node.func) is ast.Attribute:
+            self.is_method = {node.func: True}
+        return self.generic_visit(node)
+        #[self.visit(arg) for arg in node.args]
+        #[self.visit(kwarg) for kwarg in node.keywords]
+        #return node
+
+    def visit_Attribute(self, node):
+        #print(ast.dump(node))
+        if type(node.value) is not ast.Name and self.is_method.get(node, False):
+            print(astor.dump_tree(node))
+            node_expr = astor.to_source(node.value)
+            self.hash_gen.update(node_expr)
+            expr_hash = f'_var{self.hash_gen.hexdigest()}'
+            self.hash_gen.reset()
+            self.exprs += [f'{expr_hash}={node_expr}']
+            attr_name = ast.Name(id=f'{expr_hash}', ctx=ast.Load())
+            newnode = ast.Attribute(value=attr_name, attr=node.attr)
+            ast.copy_location(newnode, node)
+            ast.fix_missing_locations(newnode)
+            print(astor.dump_tree(newnode))
+            return newnode
+        return node
 
 class DepAnalyzer(ast.NodeVisitor):
     def __init__(self):
@@ -15,11 +49,13 @@ class DepAnalyzer(ast.NodeVisitor):
         self.funcs = []
         self.crosswalk = {}
         self.is_method = {}
+        self.is_func = {}
 
     def visit_Assign(self, node):
         lhs, = node.targets
         rhs = node.value
-        #print(ast.dump(rhs))
+        print(ast.dump(rhs))
+        #print(astor.dump_tree(rhs))
         self.visit(rhs)
 
     def visit_Attribute(self, node):
@@ -60,18 +96,19 @@ class DepAnalyzer(ast.NodeVisitor):
         #if type(node.func) is ast.Attribute:
         #    self.deps += [f"{node.func.value.id}.{node.func.value.id}_id"]
         if type(node.func) is ast.Attribute:
-            self.is_method = {node.func: True}
-            self.visit(node.func)
+            self.is_method[node.func] = True
+            #self.visit(node.func)
         else:
-            self.funcs += [node.func]
-        [self.visit(arg) for arg in node.args]
-        [self.visit(kwarg) for kwarg in node.keywords]
+            self.is_func[node.func] = True
+        self.generic_visit(node)
+        #[self.visit(arg) for arg in node.args + node.keywords]
+        #[self.visit(kwarg) for kwarg in node.keywords]
 
     def visit_Name(self, node):
         #print(ast.dump(node))
         if hasattr(node, "attr"):
             self.deps += [f"{node.id}.{node.attr}"]
-        else:
+        elif not self.is_func.get(node, False):
             self.deps += [node.id]
 
     def report(self):
@@ -99,11 +136,14 @@ def build_graph(vardef_yml, verbose=False):
             analyzer = DepAnalyzer()
             analyzer.visit(stmt)
             #analyzer.report()
+            transformer = ExprTransformer()
+            expr_txfm = transformer.visit(stmt)
+            exprs = transformer.exprs + [astor.to_source(expr_txfm)]
             dep_dict[f"{df_name}.{lhs.id}"] = [[f"{dep}" if "." in dep
                                                   else f"{df_name}.{dep}"
                                                 for dep in analyzer.deps
                                                 ],
-                                               expr, # original var definition
+                                               exprs, # original var definition
                                                None] # hash placeholder
             #def_dict[f"{df_name}.{lhs.id}"] = expr #rhs
 

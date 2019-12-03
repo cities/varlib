@@ -18,3 +18,7 @@
 - [ ] is there a need to specify dataset relationship? If yes, what is the most sensible way to do so?
 - [ ] get feedback from Paul and team
 - [ ] a variable checker that verifies variable definitions
+- [ ] cache dep_graph on disk
+- [ ] if a predecessor doesn't have predecessor, don't call compute on it
+   e.g. person.is_child, if age is up-to-date, don't need to call compute(age), since age doesn't have any predecessor (primary attributes in opus)
+- [ ] parallel computation of variables, zmq?
