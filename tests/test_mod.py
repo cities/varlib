@@ -74,6 +74,16 @@ def test_compute_simple_vars():
     assert 'log1p_age' in person.columns
     assert np.allclose(person['log1p_age'].values,
                        np.array([1.09861229, 3.29583687, 3.68887945, 2.39789527]))
+    compute("person.is_child_int2", dep_graph, resolvers=resolvers, engine='python')
+    assert 'is_child_int2' in person.columns
+    assert np.allclose(person['is_child_int2'].values,
+                       np.array([1, 0, 0, 1]))
+    #compute("person.is_child_int", dep_graph, resolvers=resolvers, engine='python')
+    #assert 'is_child_int' in person.columns
+    #assert np.allclose(person['is_child_int'].values,
+    #                   np.array([1, 0, 0, 1]))
+
+
 
 def test_compute_lazy_recompute():
     resolvers = prep_resolvers()

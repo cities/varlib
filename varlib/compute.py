@@ -44,7 +44,8 @@ def log_function_entry_and_exit(decorated_function):
     return wrapper
 
 @log_function_entry_and_exit
-def compute(full_vname, dep_graph, resolvers, recompute=False, level=0):
+def compute(full_vname, dep_graph, resolvers, recompute=False, level=0,
+            *args, **kwargs):
     if type(full_vname) is list:
         [compute(a_vname, dep_graph, resolvers, recompute=recompute, level=0)
                  for a_vname in full_vname]
@@ -58,11 +59,12 @@ def compute(full_vname, dep_graph, resolvers, recompute=False, level=0):
     for dep_full_vname in dep_graph.predecessors(full_vname):
         dep_df_name, dep_vname = dep_full_vname.split(".")
         #if dep_vname not in resolvers[dep_df_name].columns:
-        compute(dep_full_vname, dep_graph, resolvers, level=level+1)
+        compute(dep_full_vname, dep_graph, resolvers, *args,
+                level=level+1, **kwargs)
         xxh64_hash.update(resolvers[dep_df_name][dep_vname].values)
         current_hash = xxh64_hash.intdigest()
         xxh64_hash.reset()
-        dep_hash = dep_graph.nodes[dep_full_vname].get("hash", "")
+        dep_hash = dep_graph.nodes[dep_full_vname].get("hash", None)
         if dep_hash != current_hash:
             deps_up_to_date = False
             dep_graph.nodes[dep_full_vname]["hash"] = current_hash
@@ -71,9 +73,9 @@ def compute(full_vname, dep_graph, resolvers, recompute=False, level=0):
     log = logging.getLogger('compute')
     indent = logging_indent_spaces_per_level * (level + 1)
     if not vname_exists or not deps_up_to_date or recompute:
-        var_def = dep_graph.nodes[full_vname]['expr']
+        var_def = dep_graph.nodes[full_vname]['expr'][0]
         #var_def = f"{vname} = {var_def}"
-        df.eval(var_def, inplace=True)
+        df.eval(var_def, *args, inplace=True, **kwargs)
         reason = 'new variable' * (not vname_exists) or \
                  'forced recomputing' * recompute or \
                  'dependency updated' * (not deps_up_to_date)
@@ -82,6 +84,21 @@ def compute(full_vname, dep_graph, resolvers, recompute=False, level=0):
         log.info(f'{indent}Computing {full_vname} skipped')
 
     return
+
+def eval(exprs, *args, **kwargs):
+    if len(exprs) == 1:
+        return pd.eval(exprs, *args, **kwargs, inplace=True)
+    resolvers = kwargs.get('resolvers', {})
+    xxh64_gen = xxhash.xxh64()
+    for expr in exprs:
+        fmtexpr = expr.format(**resolvers)
+        res = pd.eval(fmtexpr, *args, resolvers=resolvers,
+                      inplace=False, **kwargs)
+        xxh64_gen.update(expr)
+        expr_hash = xxh64_gen.intdigest()
+        resolvers[f'_ret_expr{expr_hash}'] = res
+        xxh64_gen.reset()
+    return res
 
 #import sys
 #sys.path = ["/home/lmwang/py3env/lib/python3.8/site-packages"] + sys.path
