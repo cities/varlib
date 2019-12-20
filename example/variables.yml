@@ -1,5 +1,5 @@
 household:
-    - hhsize = household.aggregate(person.person_id > 0)
+    - hhsize = household.aggregate(person.household_id > 0)
     - nchildren = household.aggregate(person.is_child)
     - nadults = hhsize - nchildren
     - cars_per_adults = cars / nadults
@@ -8,6 +8,7 @@ household:
     - exp_hhsize = exp(hhsize)
 
 person:
+    - person_id = (household_id * 10 + member_id)
     - is_child = age < 18
     - is_child_int = (age < 18).astype('int')
     - is_child_int2 = (is_child).astype('int')

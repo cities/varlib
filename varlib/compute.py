@@ -74,10 +74,11 @@ def compute(full_vname, dep_graph, resolvers, recompute=False, level=0,
     log = logging.getLogger('compute')
     indent = logging_indent_spaces_per_level * (level + 1)
     if not vname_exists or not deps_up_to_date or recompute:
-        for expr in dep_graph.nodes[full_vname]['exprs']:
+        for expr in dep_graph.nodes[full_vname].get('exprs', []):
             var_def = expr
         #var_def = f"{vname} = {var_def}"
             df.eval(var_def, *args, inplace=True, **kwargs)
+            #eval_assign(var_def, resolvers=resolvers, inplace=True)
         reason = 'new variable' * (not vname_exists) or \
                  'forced recomputing' * recompute or \
                  'dependency updated' * (not deps_up_to_date)
@@ -87,20 +88,25 @@ def compute(full_vname, dep_graph, resolvers, recompute=False, level=0,
 
     return
 
-def eval(exprs, *args, **kwargs):
-    if len(exprs) == 1:
-        return pd.eval(exprs, *args, **kwargs, inplace=True)
-    resolvers = kwargs.get('resolvers', {})
-    xxh64_gen = xxhash.xxh64()
-    for expr in exprs:
-        fmtexpr = expr.format(**resolvers)
-        res = pd.eval(fmtexpr, *args, resolvers=resolvers,
-                      inplace=False, **kwargs)
-        xxh64_gen.update(expr)
-        expr_hash = xxh64_gen.intdigest()
-        resolvers[f'_ret_expr{expr_hash}'] = res
-        xxh64_gen.reset()
-    return res
+def eval_assign(expr, target_ds=None, target_col=None, resolvers={}, functions={},
+         inplace=True):
+    from simpleeval import SimpleEval
+
+    s = SimpleEval()
+    s.names.update(resolvers)
+    s.functions.update(functions)
+    ret = s.eval(expr)
+    if inplace:
+        if target_ds is None or target_col is None:
+            expr_mod = ast.parse(expr).body[0]
+            assert type(expr_mod) is ast.Assign
+            src_target = astor.to_source(expr_mod.targets[0]).strip()
+            target_ds, target_col = src_target.split(".")
+
+        resolvers[target_ds][target_col] = ret
+        return resolvers[target_ds]
+    else:
+        return ret
 
 #import sys
 #sys.path = ["/home/lmwang/py3env/lib/python3.8/site-packages"] + sys.path

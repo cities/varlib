@@ -43,6 +43,10 @@ class ExprTransformer(ast.NodeTransformer):
             return newnode
         return node
 
+    def visit_Arg(self, node):
+        print(astor.dump_tree(node))
+        return node
+
 class DepAnalyzer(ast.NodeVisitor):
     def __init__(self):
         self.deps = []
@@ -54,8 +58,8 @@ class DepAnalyzer(ast.NodeVisitor):
     def visit_Assign(self, node):
         lhs, = node.targets
         rhs = node.value
-        print(ast.dump(rhs))
-        #print(astor.dump_tree(rhs))
+        #print(ast.dump(rhs))
+        print(astor.dump_tree(rhs))
         self.visit(rhs)
 
     def visit_Attribute(self, node):
