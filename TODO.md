@@ -7,7 +7,7 @@
    - insert hash digest as 'version' attr in the dep graph for a variable is computed
    - insert hash digest of dependencies variables into the dependency graph at computing if a column of the name of the variable exists and its version attr in dep graph is not set
    - re-compute a variable only when 'version' attr for predecessors is not set or differ from current value of hash digest
-- [ ] a simpler parser for parsing common expressions to be evaluated, e.g.
+- [x] a simpler yet safe parser for parsing common expressions to be evaluated, e.g.
    * person.eval("@to_numeric(age<18)")
    * person.eval("(age<18).astype('int')")
    * pd.eval("(person.age).astype('int')")
@@ -19,6 +19,6 @@
 - [ ] get feedback from Paul and team
 - [ ] a variable checker that verifies variable definitions
 - [ ] cache dep_graph on disk
-- [ ] if a predecessor doesn't have predecessor, don't call compute on it
+- [x] if a predecessor doesn't have predecessor, don't call compute on it
    e.g. person.is_child, if age is up-to-date, don't need to call compute(age), since age doesn't have any predecessor (primary attributes in opus)
 - [ ] parallel computation of variables, zmq?

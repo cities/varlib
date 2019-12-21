@@ -8,7 +8,7 @@ with codecs_open('README.rst', encoding='utf-8') as f:
 
 
 setup(name='varlib',
-      version='0.2.0',
+      version='0.3.0',
       description=u"Variable Library",
       long_description=long_description,
       classifiers=[],
@@ -26,6 +26,7 @@ setup(name='varlib',
           'numpy',
           'pandas',
           'pyyaml',
+          'simpleeval',
           'xxhash',
       ],
       extras_require={

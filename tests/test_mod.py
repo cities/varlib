@@ -6,7 +6,7 @@ import numpy as np
 # tests
 def compare_dict(dict1, dict2, verbose=True):
     for x1 in dict1.keys():
-        z = dict1.get(x1) == dict2.get(x1)
+        z = set(dict1.get(x1)) == set(dict2.get(x1))
         if not z and verbose:
             print('key', x1)
             print('Actual', dict1.get(x1), '\nExpected', dict2.get(x1))

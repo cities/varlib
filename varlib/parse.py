@@ -54,13 +54,17 @@ class ExprQualifier(ast.NodeTransformer):
         self.is_method = {}
         self.is_func = {}
         self.deps = []
-        self.skip = {}
+        self.crosswalk = {}
 
-    def transform_stmt(self, stmt):
+    def transform_stmt(self, stmt, verbose=True):
+        if verbose:
+            print('=> Before transforming ---')
+            print(astor.to_source(stmt))
         stmt_txfm = self.visit(stmt)
-        print(astor.dump_tree(stmt_txfm))
         stmt_retn = astor.to_source(stmt_txfm)
-        print(stmt_retn)
+        if verbose:
+            print('=> After transforming ---')
+            print(stmt_retn)
         return stmt_retn
 
     def visit_Call(self, node):
@@ -69,6 +73,27 @@ class ExprQualifier(ast.NodeTransformer):
             self.is_method[node.func.value] = True
         else:
             self.is_func[node.func] = True
+
+        func_name = node.func.id if type(node.func) is ast.Name else \
+            node.func.attr
+        if func_name in ['aggregate', 'disaggregate']:
+            self.crosswalk['target_ds'] = self.dataset_name
+            self.crosswalk["func"] = func_name
+            #self.deps += [f'{self.dataset_name}.{node.id}']
+            self.generic_visit(node)
+
+            # insert target_ds = 'dataset_name' into list of arguments
+            keyword_val = ast.Constant(value=self.dataset_name, kind=None)
+            keyword = ast.keyword(arg='target_ds', value=keyword_val)
+            keywords = node.keywords + [keyword]
+            newnode = ast.Call(node.func, args=node.args, keywords=keywords)
+            #dataset_name = ast.Name(id=f'{self.dataset_name}', ctx=node.ctx)
+            #newnode = ast.Attribute(value=dataset_name, attr=node.id, ctx=node.ctx)
+            ast.copy_location(newnode, node)
+            ast.fix_missing_locations(newnode)
+            #print(astor.dump_tree(newnode))
+            return newnode
+
         return self.generic_visit(node)
 
     def visit_Attribute(self, node):
@@ -80,6 +105,14 @@ class ExprQualifier(ast.NodeTransformer):
             if not self.is_method.get(node, False):
                 self.deps += [f'{child_node.id}.{node.attr}']
                 self.is_qualified_name[child_node] = True
+                # find the source dataset and adds required id to deps
+                #import ipdb; ipdb.set_trace()
+                if 'target_ds' in self.crosswalk:
+                    func = self.crosswalk["func"]
+                    tgt_ds = self.crosswalk['target_ds']
+                    src_ds = child_node.id
+                    self.deps += [f'{src_ds}.{tgt_ds}_id'] if func == 'aggregate' else \
+                        [f'{tgt_ds}.{src_ds}_id']
             elif child_node.id in ['np']:
                 #- is_girl = np.logical_and(is_child, sex == 'F')
                 self.is_func[node.value] = True
@@ -103,7 +136,7 @@ class ExprQualifier(ast.NodeTransformer):
             newnode = ast.Attribute(value=dataset_name, attr=node.id, ctx=node.ctx)
             ast.copy_location(newnode, node)
             ast.fix_missing_locations(newnode)
-            print(astor.dump_tree(newnode))
+            #print(astor.dump_tree(newnode))
             return newnode
         return node
 
@@ -120,7 +153,7 @@ class DepAnalyzer(ast.NodeVisitor):
         lhs, = node.targets
         rhs = node.value
         #print(ast.dump(rhs))
-        print(astor.dump_tree(rhs))
+        #print(astor.dump_tree(rhs))
         self.visit(rhs)
 
     def visit_Attribute(self, node):
@@ -210,7 +243,7 @@ def build_graph(vardef_yml, verbose=False):
             deps = transformer.deps
             #deps = [f"{dep}" if "." in dep else f"{df_name}.{dep}"
             #                    for dep in analyzer.deps]
-            dep_dict[f"{deps[0]}"] = [deps[1:],
+            dep_dict[f"{deps[0]}"] = [set(deps[1:]),
                                       stmt,  # fully qualified var definition
                                       None]  # hash placeholder
             #import ipdb; ipdb.set_trace()
