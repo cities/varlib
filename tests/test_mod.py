@@ -63,15 +63,16 @@ def prep_resolvers():
 dep_graph = build_graph("example/variables.yml")
 def test_compute_simple_vars():
     resolvers = prep_resolvers()
+    functions = {'logical_and': np.logical_and, 'log': np.log}
     person = resolvers["person"]
-    compute("person.is_girl", dep_graph, resolvers=resolvers)
+    compute("person.is_girl", dep_graph, resolvers=resolvers, functions=functions)
     assert 'is_girl' in person.columns
     assert np.all(person['is_girl'].values ==
                   np.array([True, False, False, False]))
     assert 'is_child' in person.columns
     assert np.all(person['is_child'].values ==
                   np.array([True, False, False, True]))
-    compute("person.log1p_age", dep_graph, resolvers=resolvers)
+    compute("person.log1p_age", dep_graph, resolvers=resolvers, functions=functions)
     assert 'log1p_age' in person.columns
     assert np.allclose(person['log1p_age'].values,
                        np.array([1.09861229, 3.29583687, 3.68887945, 2.39789527]))
@@ -88,17 +89,19 @@ def test_compute_simple_vars():
 
 def test_compute_lazy_recompute():
     resolvers = prep_resolvers()
+    functions = {'logical_and': np.logical_and}
     person = resolvers["person"]
-    compute("person.is_girl", dep_graph, resolvers=resolvers)
+    compute("person.is_girl", dep_graph, resolvers=resolvers, functions=functions)
     assert 'is_girl' in person.columns
     col1 = person['is_girl']
-    compute("person.is_girl", dep_graph, resolvers=resolvers)
+    compute("person.is_girl", dep_graph, resolvers=resolvers, functions=functions)
     assert id(person['is_girl']) == id(col1), "lazy recompute not enabled"
-    compute("person.is_girl", dep_graph, resolvers=resolvers, recompute=True)
+    compute("person.is_girl", dep_graph, resolvers=resolvers, functions=functions,
+            recompute=True)
     assert id(person['is_girl']) != id(col1), "force recompute failed"
     col2 = person['is_girl']
     person['age'] += 10
-    compute("person.is_girl", dep_graph, resolvers=resolvers)
+    compute("person.is_girl", dep_graph, resolvers=resolvers, functions=functions)
     assert id(person['is_girl']) != id(col2), "failed to recompute when deps change"
 
 def DISABLED_test_compute_type_conversion():

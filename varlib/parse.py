@@ -47,8 +47,57 @@ class ExprTransformer(ast.NodeTransformer):
         print(astor.dump_tree(node))
         return node
 
+class ExprQualifier(ast.NodeTransformer):
+    def __init__(self, dataset_name=None):
+        self.dataset_name = dataset_name
+        self.is_qualified_attr = {}
+        self.is_method = {}
+        self.is_func = {}
+
+    def transform_stmt(self, stmt):
+        stmt_txfm = self.visit(stmt)
+        print(astor.dump_tree(stmt_txfm))
+        stmt_retn = astor.to_source(stmt_txfm)
+        print(stmt_retn)
+        return stmt_retn
+
+    def visit_Call(self, node):
+        if type(node.func) is ast.Attribute:
+            self.is_method[node.func] = True
+        else:
+            self.is_func[node.func] = True
+        return self.generic_visit(node)
+
+    def visit_Attribute(self, node):
+        #import ipdb; ipdb.set_trace()
+        #if type(node.value) is ast.Name and not self.is_method.get(node, False):
+        if hasattr(node.value, 'value'):
+            grandchild_node = node.value.value
+            self.is_qualified_attr[grandchild_node] = True
+        elif hasattr(node.value, 'id') and node.value.id == 'np':
+            self.is_qualified_attr[node.value] = True
+        return self.generic_visit(node)
+
+    def visit_Name(self, node):
+        #print(ast.dump(node))
+        #if hasattr(node, "attr"):
+        #import ipdb; ipdb.set_trace()
+        if self.is_qualified_attr.get(node, False): # or self.is_method.get(node, False):
+            #self.deps +=f'{node.id}'
+            return node
+        elif not self.is_func.get(node, False):
+            #self.deps +=f'{self.dataset_name}.{node.id}'
+            dataset_name = ast.Name(id=f'{self.dataset_name}', ctx=node.ctx)
+            newnode = ast.Attribute(value=dataset_name, attr=node.id, ctx=node.ctx)
+            ast.copy_location(newnode, node)
+            ast.fix_missing_locations(newnode)
+            print(astor.dump_tree(newnode))
+            return newnode
+        return node
+
 class DepAnalyzer(ast.NodeVisitor):
-    def __init__(self):
+    def __init__(self, dataset_name=None):
+        self.dataset_name = dataset_name
         self.deps = []
         self.funcs = []
         self.crosswalk = {}
@@ -113,7 +162,10 @@ class DepAnalyzer(ast.NodeVisitor):
         if hasattr(node, "attr"):
             self.deps += [f"{node.id}.{node.attr}"]
         elif not self.is_func.get(node, False):
-            self.deps += [node.id]
+            dep = node.id
+            #if "." not in dep:
+            #    dep = f"{self.dataset_name}.{dep}"
+            self.deps += [dep]
 
     def report(self):
         pprint(self.deps)
@@ -125,6 +177,7 @@ def build_graph(vardef_yml, verbose=False):
     with open(vardef_yml) as file:
         # The FullLoader parameter handles the conversion from YAML
         # scalar values to Python the dictionary format
+
         variables = yaml.load(file, Loader=yaml.FullLoader)
 
         #print(variables)
@@ -137,15 +190,15 @@ def build_graph(vardef_yml, verbose=False):
             stmt = module.body[0]
             lhs, = stmt.targets
             rhs = stmt.value
-            analyzer = DepAnalyzer()
+            analyzer = DepAnalyzer(dataset_name=df_name)
             analyzer.visit(stmt)
             #analyzer.report()
-            transformer = ExprTransformer()
-            stmts = transformer.transform_stmt(stmt)
+            transformer = ExprQualifier(dataset_name=df_name)
+            stmt = transformer.transform_stmt(stmt)
             deps = [f"{dep}" if "." in dep else f"{df_name}.{dep}"
                                 for dep in analyzer.deps]
             dep_dict[f"{df_name}.{lhs.id}"] = [deps,
-                                               stmts, # original var definition
+                                               stmt,  # fully qualified var definition
                                                None]  # hash placeholder
             #def_dict[f"{df_name}.{lhs.id}"] = expr #rhs
 
@@ -153,9 +206,9 @@ def build_graph(vardef_yml, verbose=False):
     for k, v in dep_dict.items():
         k_dep, k_expr, k_hash = v
         if not dep_graph.has_node(k):
-            dep_graph.add_node(k, exprs=k_expr, hash=k_hash)
+            dep_graph.add_node(k, expr=k_expr, hash=k_hash)
         else:
-            dep_graph.nodes[k]['exprs'] = k_expr
+            dep_graph.nodes[k]['expr'] = k_expr
             dep_graph.nodes[k]['hash'] = k_hash
         dep_graph.add_nodes_from(k_dep)
         edges = itertools.zip_longest(k_dep, [k], fillvalue=k)

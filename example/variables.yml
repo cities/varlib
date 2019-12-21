@@ -12,7 +12,7 @@ person:
     - is_child = age < 18
     - is_child_int = (age < 18).astype('int')
     - is_child_int2 = (is_child).astype('int')
-    - is_girl = is_child and sex == 'F'
+    - is_girl = logical_and(is_child, sex == 'F')
     - log1p_age = log(age+1)
     - hh_nadults = person.disaggregate(household.nadults)
 

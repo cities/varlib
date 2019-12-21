@@ -44,7 +44,8 @@ def log_function_entry_and_exit(decorated_function):
     return wrapper
 
 @log_function_entry_and_exit
-def compute(full_vname, dep_graph, resolvers, recompute=False, level=0,
+def compute(full_vname, dep_graph, resolvers, functions={},
+            recompute=False, level=0,
             *args, **kwargs):
     if type(full_vname) is list:
         [compute(a_vname, dep_graph, resolvers, *args,
@@ -74,11 +75,11 @@ def compute(full_vname, dep_graph, resolvers, recompute=False, level=0,
     log = logging.getLogger('compute')
     indent = logging_indent_spaces_per_level * (level + 1)
     if not vname_exists or not deps_up_to_date or recompute:
-        for expr in dep_graph.nodes[full_vname].get('exprs', []):
-            var_def = expr
+        var_def = dep_graph.nodes[full_vname].get('expr', '')
         #var_def = f"{vname} = {var_def}"
-            df.eval(var_def, *args, inplace=True, **kwargs)
-            #eval_assign(var_def, resolvers=resolvers, inplace=True)
+        #df.eval(var_def, *args, inplace=True, **kwargs)
+        eval_assign(var_def, resolvers=resolvers, functions=functions,
+                    inplace=True)
         reason = 'new variable' * (not vname_exists) or \
                  'forced recomputing' * recompute or \
                  'dependency updated' * (not deps_up_to_date)
@@ -90,11 +91,13 @@ def compute(full_vname, dep_graph, resolvers, recompute=False, level=0,
 
 def eval_assign(expr, target_ds=None, target_col=None, resolvers={}, functions={},
          inplace=True):
+    import ast
+    import astor
     from simpleeval import SimpleEval
-
     s = SimpleEval()
     s.names.update(resolvers)
     s.functions.update(functions)
+    #import ipdb; ipdb.set_trace()
     ret = s.eval(expr)
     if inplace:
         if target_ds is None or target_col is None:
