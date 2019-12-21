@@ -50,9 +50,11 @@ class ExprTransformer(ast.NodeTransformer):
 class ExprQualifier(ast.NodeTransformer):
     def __init__(self, dataset_name=None):
         self.dataset_name = dataset_name
-        self.is_qualified_attr = {}
+        self.is_qualified_name = {}
         self.is_method = {}
         self.is_func = {}
+        self.deps = []
+        self.skip = {}
 
     def transform_stmt(self, stmt):
         stmt_txfm = self.visit(stmt)
@@ -64,6 +66,7 @@ class ExprQualifier(ast.NodeTransformer):
     def visit_Call(self, node):
         if type(node.func) is ast.Attribute:
             self.is_method[node.func] = True
+            self.is_method[node.func.value] = True
         else:
             self.is_func[node.func] = True
         return self.generic_visit(node)
@@ -71,22 +74,31 @@ class ExprQualifier(ast.NodeTransformer):
     def visit_Attribute(self, node):
         #import ipdb; ipdb.set_trace()
         #if type(node.value) is ast.Name and not self.is_method.get(node, False):
-        if hasattr(node.value, 'value'):
+        if type(node.value) is ast.Name:
+            #e.g. disaggregate(household.nadults)
+            child_node = node.value
+            if not self.is_method.get(node, False):
+                self.deps += [f'{child_node.id}.{node.attr}']
+                self.is_qualified_name[child_node] = True
+            elif child_node.id in ['np']:
+                #- is_girl = np.logical_and(is_child, sex == 'F')
+                self.is_func[node.value] = True
+        elif hasattr(node.value, 'value'):
+            #e.g. person.is_child.astype('int')
             grandchild_node = node.value.value
-            self.is_qualified_attr[grandchild_node] = True
-        elif hasattr(node.value, 'id') and node.value.id == 'np':
-            self.is_qualified_attr[node.value] = True
+            self.is_qualified_name[grandchild_node] = True
+        #elif hasattr(node.value, 'id') and node.value.id in ['np']:
+        #    # module_name.func_name
+        #    self.is_func[node.value] = True
         return self.generic_visit(node)
 
     def visit_Name(self, node):
         #print(ast.dump(node))
         #if hasattr(node, "attr"):
-        #import ipdb; ipdb.set_trace()
-        if self.is_qualified_attr.get(node, False): # or self.is_method.get(node, False):
-            #self.deps +=f'{node.id}'
+        if self.is_qualified_name.get(node, False): # or self.is_method.get(node, False):
             return node
         elif not self.is_func.get(node, False):
-            #self.deps +=f'{self.dataset_name}.{node.id}'
+            self.deps += [f'{self.dataset_name}.{node.id}']
             dataset_name = ast.Name(id=f'{self.dataset_name}', ctx=node.ctx)
             newnode = ast.Attribute(value=dataset_name, attr=node.id, ctx=node.ctx)
             ast.copy_location(newnode, node)
@@ -188,18 +200,21 @@ def build_graph(vardef_yml, verbose=False):
             #print(expr)
             module = ast.parse(expr)
             stmt = module.body[0]
-            lhs, = stmt.targets
-            rhs = stmt.value
-            analyzer = DepAnalyzer(dataset_name=df_name)
-            analyzer.visit(stmt)
+            #lhs, = stmt.targets
+            #rhs = stmt.value
+            #analyzer = DepAnalyzer(dataset_name=df_name)
+            #analyzer.visit(stmt)
             #analyzer.report()
             transformer = ExprQualifier(dataset_name=df_name)
             stmt = transformer.transform_stmt(stmt)
-            deps = [f"{dep}" if "." in dep else f"{df_name}.{dep}"
-                                for dep in analyzer.deps]
-            dep_dict[f"{df_name}.{lhs.id}"] = [deps,
-                                               stmt,  # fully qualified var definition
-                                               None]  # hash placeholder
+            deps = transformer.deps
+            #deps = [f"{dep}" if "." in dep else f"{df_name}.{dep}"
+            #                    for dep in analyzer.deps]
+            dep_dict[f"{deps[0]}"] = [deps[1:],
+                                      stmt,  # fully qualified var definition
+                                      None]  # hash placeholder
+            #import ipdb; ipdb.set_trace()
+            pass
             #def_dict[f"{df_name}.{lhs.id}"] = expr #rhs
 
     dep_graph = nx.DiGraph()
