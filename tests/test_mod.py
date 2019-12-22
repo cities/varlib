@@ -1,5 +1,5 @@
 from varlib.parse import build_graph
-from varlib.compute import compute
+from varlib.compute import compute, aggregate, disaggregate
 import pandas as pd
 import numpy as np
 
@@ -22,7 +22,7 @@ def test_parse_deps():
         'household.cars_per_adults': ['household.cars', 'household.nadults'],
         'household.cars_per_adults_gt1': ['household.cars_per_adults'],
         'household.sqrt_hhsize': ['household.hhsize'],
-        'household.nchildren': ['person.is_child', 'person.household_id'],
+        'household.nchildren': ['person.is_child_int', 'person.household_id'],
         'person.person_id': ['person.household_id', 'person.member_id'],
         'person.log1p_age': ['person.age'],
         'person.is_child': ['person.age'],
@@ -58,6 +58,7 @@ def prep_resolvers():
     resolvers = {"person": person,
                  "household": household,
                  "zone": zone}
+    resolvers['resolvers'] = resolvers
     return resolvers
 
 dep_graph = build_graph("example/variables.yml")
@@ -76,15 +77,6 @@ def test_compute_simple_vars():
     assert 'log1p_age' in person.columns
     assert np.allclose(person['log1p_age'].values,
                        np.array([1.09861229, 3.29583687, 3.68887945, 2.39789527]))
-    #compute(["person.is_child_int", "person.is_child_int2"], dep_graph,
-    #        resolvers=resolvers, engine='python')
-    #assert 'is_child_int' in person.columns
-    #assert 'is_child_int2' in person.columns
-    #assert np.allclose(person['is_child_int'], person['is_child_int2'])
-    #assert np.allclose(person['is_child_int'].values,
-    #                   np.array([1, 0, 0, 1]))
-    #assert np.allclose(person['is_child_int2'].values,
-    #                   np.array([1, 0, 0, 1]))
     compute("person.person_id", dep_graph, resolvers=resolvers, engine='python')
 
 def test_compute_lazy_recompute():
@@ -104,36 +96,58 @@ def test_compute_lazy_recompute():
     compute("person.is_girl", dep_graph, resolvers=resolvers, functions=functions)
     assert id(person['is_girl']) != id(col2), "failed to recompute when deps change"
 
-def DISABLED_test_compute_type_conversion():
+def test_compute_type_conversion():
     resolvers = prep_resolvers()
+    person = resolvers["person"]
     compute("person.is_child_int", dep_graph, resolvers=resolvers)
     compute("person.is_child_int2", dep_graph, resolvers=resolvers)
     compute("person.is_child", dep_graph, resolvers=resolvers)
-    assert 'is_child' in person.columns
+    assert {'is_child', 'is_child_int', 'is_child_int2'}.issubset(person.columns)
+    assert np.all(person['is_child_int'].values == (person['is_child'].values).astype(int))
+    assert np.all(person['is_child_int'].values == person['is_child_int2'])
+
+def test_compute_dep_other():
+    resolvers = prep_resolvers()
+    #resolvers['resolvers'] = resolvers
+    functions = {'logical_and': np.logical_and,
+                'aggregate': aggregate,
+                'disaggregate': disaggregate}
+
+    person = resolvers["person"]
+    household = resolvers["household"]
+    compute("household.cars_per_adults_gt1", dep_graph, resolvers=resolvers,
+            functions=functions)
     assert 'is_child_int' in person.columns
-    assert 'is_child_int2' in person.columns
-    assert person['is_child_int'].value == (person['is_child'].value).astype(int)
-    assert person['is_child_int'].value == person['is_child_int2']
+    assert {'nchildren', 'nadults', 'cars_per_adults'}.issubset(household.columns)
+    assert all(household['cars_per_adults_gt1'].values == np.array([False, True]))
 
-def DISABLED_test_compute_dep_other():
+def test_compute_dep_others():
     resolvers = prep_resolvers()
-    compute("household.cars_per_adults_gt1", dep_graph, resolvers=resolvers)
-    assert 'is_child' in person.columns
-    assert all(['nchildren', 'nadults', 'cars_per_adults'] in household.columns)
-    assert person['cars_per_adults_gt1'].value == pd.Series([])
+    person = resolvers["person"]
+    household = resolvers["household"]
+    zone = resolvers["zone"]
+    #resolvers['resolvers'] = resolvers
+    functions = {'logical_and': np.logical_and,
+                'aggregate': aggregate,
+                'disaggregate': disaggregate}
 
-def DISABLED_test_compute_dep_others():
-    resolvers = prep_resolvers()
-    compute("zone.nadults", dep_graph, resolvers=resolvers)
-    assert 'is_child' in person.columns
-    assert all(['nchildren', 'nadults'] in household.columns)
+    compute("zone.nadults", dep_graph, resolvers=resolvers, functions=functions)
+    assert 'is_child_int' in person.columns
+    assert {'nchildren', 'nadults'}.issubset(household.columns)
     assert 'nadults' in zone.columns
-    assert zone['nadults'].value == pd.Series([])
+    assert all(zone['nadults'].values == np.array([1, 1]))
 
-def DISABLED_test_compute_round_trip():
+def test_compute_round_trip():
     resolvers = prep_resolvers()
-    compute("person.hh_nadults", dep_graph, resolvers=resolvers)
-    assert all(['is_child', 'hh_nadults'] in person.columns)
-    assert all(['nchildren', 'nadults'] in household.columns)
-    assert person['hh_nadults'].value == pd.Series([])
+    person = resolvers["person"]
+    household = resolvers["household"]
+    resolvers['resolvers'] = resolvers
+    functions = {'logical_and': np.logical_and,
+                'aggregate': aggregate,
+                'disaggregate': disaggregate}
+
+    compute("person.hh_nadults", dep_graph, resolvers=resolvers, functions=functions)
+    assert {'is_child_int', 'hh_nadults'}.issubset(person.columns)
+    assert {'nchildren', 'nadults'}.issubset(household.columns)
+    assert all(person['hh_nadults'].values == np.array([1, 1, 1, 1]))
 

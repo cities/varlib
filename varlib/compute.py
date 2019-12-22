@@ -44,12 +44,13 @@ def log_function_entry_and_exit(decorated_function):
     return wrapper
 
 @log_function_entry_and_exit
-def compute(full_vname, dep_graph, resolvers, functions={},
-            recompute=False, level=0,
-            *args, **kwargs):
+def compute(full_vname, dep_graph, resolvers, *args,
+            functions={}, recompute=False, level=0,
+            **kwargs):
     if type(full_vname) is list:
         [compute(a_vname, dep_graph, resolvers, *args,
-                 recompute=recompute, level=0, **kwargs)
+                 functions=functions, recompute=recompute, level=0,
+                 **kwargs)
                  for a_vname in full_vname]
         return
 
@@ -62,7 +63,11 @@ def compute(full_vname, dep_graph, resolvers, functions={},
         dep_df_name, dep_vname = dep_full_vname.split(".")
         #if dep_vname not in resolvers[dep_df_name].columns:
         compute(dep_full_vname, dep_graph, resolvers, *args,
-                level=level+1, **kwargs)
+                functions=functions, level=level+1,
+                #recompute=recompute,
+                # when forced to recompute should we force recomputing its
+                # dependencies?
+                **kwargs)
         xxh64_hash.update(resolvers[dep_df_name][dep_vname].values)
         current_hash = xxh64_hash.intdigest()
         xxh64_hash.reset()
@@ -76,6 +81,7 @@ def compute(full_vname, dep_graph, resolvers, functions={},
     indent = logging_indent_spaces_per_level * (level + 1)
     if not vname_exists or not deps_up_to_date or recompute:
         var_def = dep_graph.nodes[full_vname].get('expr', '')
+        assert var_def != '', f'The variable definition for {full_vname} cannot be found.'
         #var_def = f"{vname} = {var_def}"
         #df.eval(var_def, *args, inplace=True, **kwargs)
         eval_assign(var_def, resolvers=resolvers, functions=functions,
@@ -105,52 +111,30 @@ def eval_assign(expr, target_ds=None, target_col=None, resolvers={}, functions={
             assert type(expr_mod) is ast.Assign
             src_target = astor.to_source(expr_mod.targets[0]).strip()
             target_ds, target_col = src_target.split(".")
-
-        resolvers[target_ds][target_col] = ret
+        #import ipdb; ipdb.set_trace()
+        resolvers[target_ds][target_col] = ret.values
         return resolvers[target_ds]
     else:
         return ret
 
-#import sys
-#sys.path = ["/home/lmwang/py3env/lib/python3.8/site-packages"] + sys.path
-#
-#from importlib import reload
-#import pandas as pd
-#import numpy as np
-#from pandas.core.computation.expr import Expr
-#from pandas.core.computation.scope import Scope
-#
-#code = "sqrt_nch = sqrt(nchildren + 1)"
-##env = Scope(1, local_dict={"hhsize":3, "nchildren":2}, target="c")
-##aa = Expr(code, env=env)
-#
-#pp_data = {'person_id': [1, 2, 3, 4],
-#           'household_id': [1, 1, 2, 2],
-#           'age':[2,   26,  39, 10],
-#           'sex':['F', 'F', 'M', 'M']}
-## Create DataFrame
-#person = pd.DataFrame(pp_data).set_index("person_id")
-#person.name = "person"
-#
-##person = person.assign(is_child=lambda x: (x["age"]<18).astype(int))
-##pd.eval("is_child=np.where(person.age<18, 1, 0)", target=person)
-##person.eval("is_child=np.where(age<18, 1, 0)", inplace=True, np=np)
-#
-#
-#hh_data = {'household_id': [1, 2, 3]}
-## Create DataFrame
-#household = pd.DataFrame(hh_data).set_index("household_id")
-#household.name = "household"
-#
-#one = 1
-#from pandas import to_numeric
-#np.ndarray.astype
-#
-#person.eval("(age)**2")
-#person.eval("sqrt(age<18)")
-#person.eval("@to_numeric(age<18)")
-#
-#person.eval("(age).astype('int')", engine="python")
-#pd.eval("(person.age).astype('int')")
-#
-#person.eval("@(age)")
+def aggregate(expr, target_ds, source_ds, func="sum", resolvers={}):
+    #import ipdb; ipdb.set_trace()
+    tgt_df = resolvers[target_ds]
+    tgt_df_id = f"{target_ds}_id"
+    #src_ds, vname = expr.split(".")
+    src_df = resolvers[source_ds]
+    vname = expr.name
+    assert all(src_df[vname] == expr)
+    #src_df['_temp_vname'] = expr
+    res = src_df.groupby(tgt_df_id).agg({vname: func})
+    return res.loc[tgt_df.index, vname]
+
+def disaggregate(expr, target_ds, source_ds, resolvers={}):
+    tgt_df = resolvers[target_ds]
+    #src_ds, vname = expr.split(".")
+    src_df = resolvers[source_ds]
+    vname = expr.name
+    assert all(src_df[vname] == expr)
+    src_df_id = f"{source_ds}_id"
+    return src_df.loc[tgt_df[src_df_id], vname]
+

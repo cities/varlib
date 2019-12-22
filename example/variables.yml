@@ -1,6 +1,6 @@
 household:
-    - hhsize = aggregate(person.household_id > 0)
-    - nchildren = aggregate(person.is_child)
+    - hhsize = aggregate(person.household_id, func="count")
+    - nchildren = aggregate(person.is_child_int)
     - nadults = hhsize - nchildren
     - cars_per_adults = cars / nadults
     - cars_per_adults_gt1 = cars_per_adults > 1.0

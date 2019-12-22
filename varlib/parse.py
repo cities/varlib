@@ -77,15 +77,23 @@ class ExprQualifier(ast.NodeTransformer):
         func_name = node.func.id if type(node.func) is ast.Name else \
             node.func.attr
         if func_name in ['aggregate', 'disaggregate']:
-            self.crosswalk['target_ds'] = self.dataset_name
+            tgt_ds = self.dataset_name
+            self.crosswalk['target_ds'] = tgt_ds
             self.crosswalk["func"] = func_name
             #self.deps += [f'{self.dataset_name}.{node.id}']
             self.generic_visit(node)
 
+            src_ds = self.crosswalk['source_ds']
             # insert target_ds = 'dataset_name' into list of arguments
-            keyword_val = ast.Constant(value=self.dataset_name, kind=None)
-            keyword = ast.keyword(arg='target_ds', value=keyword_val)
-            keywords = node.keywords + [keyword]
+            #keyword_val = ast.Constant(value=self.dataset_name, kind=None)
+            kw_tgt_ds_val = ast.Constant(value=tgt_ds, kind=None)
+            kw_tgt_ds = ast.keyword(arg='target_ds', value=kw_tgt_ds_val)
+            kw_src_ds_val = ast.Constant(value=src_ds, kind=None)
+            kw_src_ds = ast.keyword(arg='source_ds', value=kw_src_ds_val)
+            #simpleeval doesn't provide access to resolvers
+            kw_resolvers_val = ast.Name(id='resolvers')
+            kw_resolvers = ast.keyword(arg='resolvers', value=kw_resolvers_val)
+            keywords = node.keywords + [kw_tgt_ds, kw_src_ds, kw_resolvers]
             newnode = ast.Call(node.func, args=node.args, keywords=keywords)
             #dataset_name = ast.Name(id=f'{self.dataset_name}', ctx=node.ctx)
             #newnode = ast.Attribute(value=dataset_name, attr=node.id, ctx=node.ctx)
@@ -111,6 +119,7 @@ class ExprQualifier(ast.NodeTransformer):
                     func = self.crosswalk["func"]
                     tgt_ds = self.crosswalk['target_ds']
                     src_ds = child_node.id
+                    self.crosswalk['source_ds'] = src_ds
                     self.deps += [f'{src_ds}.{tgt_ds}_id'] if func == 'aggregate' else \
                         [f'{tgt_ds}.{src_ds}_id']
             elif child_node.id in ['np']:
