@@ -84,6 +84,9 @@ def compute(full_vname, dep_graph, resolvers, *args,
         assert var_def != '', f'The variable definition for {full_vname} cannot be found.'
         #var_def = f"{vname} = {var_def}"
         #df.eval(var_def, *args, inplace=True, **kwargs)
+        # A hack to make resolvers accessible to functions evaluated
+        if 'resolvers' not in resolvers:
+            resolvers['resolvers'] = resolvers
         eval_assign(var_def, resolvers=resolvers, functions=functions,
                     inplace=True)
         reason = 'new variable' * (not vname_exists) or \

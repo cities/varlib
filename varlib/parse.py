@@ -56,7 +56,7 @@ class ExprQualifier(ast.NodeTransformer):
         self.deps = []
         self.crosswalk = {}
 
-    def transform_stmt(self, stmt, verbose=True):
+    def transform_stmt(self, stmt, verbose=False):
         if verbose:
             print('=> Before transforming ---')
             print(astor.to_source(stmt))
