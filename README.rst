@@ -10,10 +10,10 @@ varlib
 
 A variable library Python package with CLI and test suite included with the following features:
 
-- succinct variable definitions in yaml format
-- automatic detectation of variable dependencies and build a dependency graph
-- automatic dependency checking and computing when needed
-- lazy re-computation - recompute a variable only when it becomes stale
+- Succinct variable definitions in yaml format
+- Automatic detectation of variable dependencies and building of a dependency graph
+- Automatic dependency checking for variables and computing variable and their dependencies on demand
+- Lazy re-computating - recompute a variable only if necessary (the first time, on update of dependencies, or when forced)
    
 **Work-in-progress** some features may not be working yet.
 
